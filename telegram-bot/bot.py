@@ -4,21 +4,9 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str
-    redis_url: str
-
-    telegram_bot_token: str | None = None
+    telegram_bot_token: str
     # Kommagetrennter String aller Chat-IDs, z.B. "12345,67890"
-    telegram_chat_ids: str | None = None
-
-    kleinanzeigen_email: str | None = None
-    kleinanzeigen_password: str | None = None
-
-    secret_key: str
-    debug: bool = False
-
-    backend_host: str = "0.0.0.0"
-    backend_port: int = 8000
+    telegram_chat_ids: str
 
     class Config:
         env_file = ".env"
@@ -28,8 +16,6 @@ class Settings(BaseSettings):
     @property
     def telegram_chat_ids_list(self) -> list[int]:
         """Parse kommagetrennte Chat-IDs in eine Integer-Liste."""
-        if not self.telegram_chat_ids:
-            return []
         return [
             int(chat_id.strip())
             for chat_id in self.telegram_chat_ids.split(",")
@@ -40,5 +26,17 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+async def send_notification(bot, message: str) -> None:
+    """
+    Sende eine Nachricht an alle konfigurierten Chat-IDs.
+
+    `bot` ist eine Instanz deines Telegram-Bots (z.B. aus python-telegram-bot oder aiogram),
+    die eine async-Methode `send_message(chat_id=..., text=...)` besitzt.
+    """
+    settings = get_settings()
+    for chat_id in settings.telegram_chat_ids_list:
+        await bot.send_message(chat_id=chat_id, text=message)
 
 
