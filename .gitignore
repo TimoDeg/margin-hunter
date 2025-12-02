@@ -277,3 +277,26 @@ docker-compose.override.yml
 .vscode/
 .idea/
 .cursor/
+
+# SSL Certificates (Production)
+ssl/*.key
+ssl/*.pem
+ssl/*.crt
+ssl/private/
+*.key
+*.pem
+*.crt
+
+# Backup files
+backups/
+*.sql
+*.dump
+*.backup
+
+# Production logs
+logs/
+*.log
+
+# Docker volumes data
+postgres_data/
+redis_data/

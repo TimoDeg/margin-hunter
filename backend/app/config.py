@@ -20,6 +20,7 @@ else:
 
 class Settings(BaseSettings):
     database_url: str | None = None
+    database_url_sync: str | None = None
     redis_url: str | None = None
 
     telegram_bot_token: str | None = None

@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from .api import api_router
 from .config import get_settings
@@ -55,6 +56,27 @@ app.include_router(api_router)
 @app.get("/")
 async def root() -> dict:
     return {"message": "Margin Hunter Backend is running"}
+
+
+@app.get("/health")
+async def health_check() -> dict:
+    """Health Check Endpoint für Monitoring und Docker Health Checks."""
+    health_status = {"status": "ok"}
+    
+    # Database Connection Check
+    if settings.database_url and engine:
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            health_status["database"] = "connected"
+        except Exception as e:
+            logger.error("health_check_db_failed", error=str(e))
+            health_status["database"] = "disconnected"
+            health_status["status"] = "degraded"
+    else:
+        health_status["database"] = "not_configured"
+    
+    return health_status
 
 
 if __name__ == "__main__":
