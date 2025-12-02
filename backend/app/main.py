@@ -19,18 +19,16 @@ async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        logger.info("startup", event="database_connected", message="Database tables created/verified")
+        logger.info("backend_started", message="Database connected successfully")
     except Exception as e:
         logger.warning(
-            "startup",
-            event="database_connection_failed",
+            "db_connection_failed",
             error=str(e),
             message="Database connection failed. API will start but DB operations will fail.",
         )
 
-    logger.info("startup", event="backend_started")
     yield
-    logger.info("shutdown", event="backend_stopped")
+    logger.info("backend_stopped")
 
 
 app = FastAPI(
