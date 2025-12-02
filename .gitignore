@@ -1,3 +1,46 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+env.bak/
+venv.bak/
+
+# VSCode / IDE
+.vscode/
+.idea/
+*.iml
+
+# Python
+*.log
+*.sqlite3
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.parcel-cache/
+.turbo/
+.cache/
+
+# Environment / Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Docker
+*.pid
+docker-data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  scraper:
+    build: ./scraper
+    env_file:
+      - .env
+    depends_on:
+      - backend
+      - redis
+    restart: unless-stopped
+
+  telegram-bot:
+    build: ./telegram-bot
+    env_file:
+      - .env
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    env_file:
+      - .env
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: margin_hunter
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+
