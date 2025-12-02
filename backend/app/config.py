@@ -1,6 +1,11 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings
+
+# Finde Projekt-Root (2 Ebenen hoch von backend/app/config.py)
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+ENV_FILE = PROJECT_ROOT/ "backend" / ".env"
 
 
 class Settings(BaseSettings):
@@ -21,7 +26,7 @@ class Settings(BaseSettings):
     backend_port: int = 8000
 
     class Config:
-        env_file = ".env"
+        env_file = str(ENV_FILE) if ENV_FILE.exists() else ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
 
