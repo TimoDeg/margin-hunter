@@ -16,16 +16,19 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # DB-Tabellen sicherstellen (für frühe Entwicklung; später durch Alembic ersetzen)
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("backend_started", message="Database connected successfully")
-    except Exception as e:
-        logger.warning(
-            "db_connection_failed",
-            error=str(e),
-            message="Database connection failed. API will start but DB operations will fail.",
-        )
+    if settings.database_url:
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("backend_started", message="Database connected successfully")
+        except Exception as e:
+            logger.warning(
+                "db_connection_failed",
+                error=str(e),
+                message="Database connection failed. API will start but DB operations will fail.",
+            )
+    else:
+        logger.info("backend_started", message="Backend started without database (DATABASE_URL not set)")
 
     yield
     logger.info("backend_stopped")

@@ -23,11 +23,28 @@ Ein web-basiertes Arbitrage-Tool zum Scrapen von Kleinanzeigen, Berechnung von G
 - Python 3.11+
 - Node.js (für das Frontend-Dev-Setup, später)
 
-### Schnellstart (sobald alle Services implementiert sind)
-```bash
-cp .env.example .env  # Beispiel, Datei muss lokal angelegt werden
-docker-compose up -d
-```
+### Schnellstart
+
+1. **Environment-Variablen einrichten:**
+   ```bash
+   # Erstelle .env-Datei im Projekt-Root (für Docker Compose)
+   # Für lokale Entwicklung: Erstelle backend/.env
+   ```
+
+   **Wichtig:** 
+   - Für **Docker**: `.env` im Projekt-Root mit `DATABASE_URL=postgresql+asyncpg://user:pass@postgres:5432/margin_hunter`
+   - Für **lokale Entwicklung**: `backend/.env` mit `DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/margin_hunter`
+
+2. **Docker Compose starten:**
+   ```bash
+   docker compose up -d --build
+   ```
+
+3. **Oder lokal entwickeln:**
+   ```bash
+   cd backend
+   python -m app.main
+   ```
 
 Geplante Ports:
 - Backend: `http://localhost:8000` (Swagger: `/docs`)
