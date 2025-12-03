@@ -79,6 +79,15 @@ async def health_check() -> dict:
     return health_status
 
 
+@app.get("/api/health")
+async def api_health_check() -> dict:
+    """
+    Alias für den Health-Endpoint unter /api/health,
+    damit der Aufruf konsistent mit den anderen API-Routen ist.
+    """
+    return await health_check()
+
+
 if __name__ == "__main__":
     import uvicorn
 

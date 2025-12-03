@@ -1,85 +1,40 @@
 import './App.css'
-import { useEffect, useState } from 'react'
-
-type HealthResponse = {
-  status: string
-  database?: string
-}
+import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
+import { DashboardPage } from './pages/Dashboard'
+import { OffersPage } from './pages/Offers'
+import { ProductsPage } from './pages/Products'
+import { ScraperPage } from './pages/Scraper'
 
 function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    const fetchHealth = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Nutze explizit den funktionierenden Health-Endpoint über nginx.
-        // Absolute URL, um Verwechslungen mit Dev-Server/Proxy zu vermeiden.
-        const urls = ['http://localhost/health']
-
-        let lastError: unknown = null
-        for (const url of urls) {
-          try {
-            const res = await fetch(url)
-            if (!res.ok) {
-              throw new Error(`HTTP ${res.status}`)
-            }
-            const data = (await res.json()) as HealthResponse
-            setHealth(data)
-            return
-          } catch (err) {
-            lastError = err
-          }
-        }
-
-        throw lastError ?? new Error('Unknown error')
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Unbekannter Fehler beim Laden',
-        )
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void fetchHealth()
-  }, [])
-
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Margin Hunter</h1>
-        <p>Backend Health Check</p>
-      </header>
-
-      <main>
-        {loading && <p>Lade Health-Status...</p>}
-        {error && (
-          <p style={{ color: 'red' }}>
-            Fehler beim Laden des Health-Status: {error}
-          </p>
-        )}
-        {health && (
-          <div className="card">
-            <p>
-              <strong>Status:</strong> {health.status}
-            </p>
-            {health.database && (
-              <p>
-                <strong>Datenbank:</strong> {health.database}
-              </p>
-            )}
+    <BrowserRouter>
+      <div className="App">
+        <aside className="App-sidebar">
+          <div className="App-logo">Margin Hunter</div>
+          <nav className="App-nav">
+            <NavLink to="/" end>
+              Dashboard
+            </NavLink>
+            <NavLink to="/offers">Offers</NavLink>
+            <NavLink to="/products">Products</NavLink>
+            <NavLink to="/scraper">Scraper</NavLink>
+          </nav>
+        </aside>
+        <header className="App-header">
+          <div className="App-title">Margin Hunter – Arbitrage Dashboard</div>
+        </header>
+        <main className="App-main">
+          <div className="Page">
+            <Routes>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/offers" element={<OffersPage />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route path="/scraper" element={<ScraperPage />} />
+            </Routes>
           </div>
-        )}
-        {!loading && !error && !health && (
-          <p>Keine Health-Daten verfügbar. Läuft das Backend?</p>
-        )}
-      </main>
-    </div>
+        </main>
+      </div>
+    </BrowserRouter>
   )
 }
 

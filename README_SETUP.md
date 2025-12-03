@@ -113,7 +113,7 @@ python3 -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(32))"
 
 Bearbeite `.env` und fülle folgende Werte aus:
 
-**Datenbank** (Standardwerte für lokale Entwicklung):
+**Datenbank** (Standardwerte für Docker-Setup):
 ```env
 DATABASE_URL=postgresql+asyncpg://user:pass@postgres:5432/margin_hunter
 DATABASE_URL_SYNC=postgresql://user:pass@postgres:5432/margin_hunter
@@ -130,13 +130,13 @@ SECRET_KEY=<dein-generierter-key>
 DEBUG=False
 ```
 
-**Telegram Bot**:
+**Telegram Bot** (optional, für lokalen Test kann auch leer bleiben):
 ```env
 TELEGRAM_BOT_TOKEN=<dein-bot-token-vom-botfather>
 TELEGRAM_CHAT_IDS=<deine-chat-id>
 ```
 
-**Kleinanzeigen**:
+**Kleinanzeigen** (optional, Scraper kann auch mit Platzhalter laufen):
 ```env
 KLEINANZEIGEN_EMAIL=<deine-email>
 KLEINANZEIGEN_PASSWORD=<dein-passwort>

@@ -15,5 +15,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app
 
 # Platzhalter, bis der eigentliche Bot implementiert ist
-CMD ["python", "-c", \"print('telegram-bot placeholder container running'); import time; time.sleep(3600)\"] 
+# Verhindert Crash-Loops, loggt aber klar, dass es nur ein Stub ist.
+CMD ["python", "-c", "print('telegram-bot placeholder container running'); import time; time.sleep(3600)"]
 
