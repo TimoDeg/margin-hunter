@@ -14,5 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app
 
-CMD ["python", "bot.py"]
+# Platzhalter, bis der eigentliche Bot implementiert ist
+CMD ["python", "-c", \"print('telegram-bot placeholder container running'); import time; time.sleep(3600)\"] 
 

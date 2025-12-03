@@ -14,5 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app
 
-CMD ["python", "scraper.py"]
+# Platzhalter, bis der eigentliche Scraper implementiert ist
+CMD ["python", "-c", "print('scraper placeholder container running'); import time; time.sleep(3600)"]
 
