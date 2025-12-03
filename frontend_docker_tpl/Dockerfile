@@ -2,15 +2,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies
+# Installiere Dependencies
 COPY package.json package-lock.json* ./
 RUN npm install
 
-# Copy source
+# Kopiere Source-Code
 COPY . .
 
+# Exponiere Port für Vite Dev-Server
 EXPOSE 5173
 
+# Starte Vite Dev-Server
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
-
 

@@ -212,10 +212,9 @@ curl http://localhost/api/health
 ### 5.2 Frontend testen
 
 ```bash
-# Via nginx
-curl http://localhost
-
-# Sollte HTML zurückgeben
+# Via nginx im Browser
+# Öffne: http://localhost
+# Du solltest die Vite-React-App sehen, die den Backend-Health-Status anzeigt.
 ```
 
 ### 5.3 Datenbank-Verbindung prüfen
