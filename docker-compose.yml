@@ -50,13 +50,13 @@ services:
     image: postgres:16
     environment:
       POSTGRES_DB: margin_hunter
-      POSTGRES_USER: user
+      POSTGRES_USER: margin_user
       POSTGRES_PASSWORD: pass
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d margin_hunter"]
+      test: ["CMD-SHELL", "pg_isready -U margin_user -d margin_hunter"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,6 +70,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  celery-worker:
+    build: ./backend
+    command: celery -A app.celery_config worker -l info -c 4
+    environment:
+      - DATABASE_URL_SYNC=postgresql://margin_user:pass@postgres:5432/margin_hunter
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-for-celery-testing
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
 
 volumes:
   postgres_data:

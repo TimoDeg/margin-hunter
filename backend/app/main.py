@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 import structlog
 from fastapi import FastAPI
@@ -8,6 +9,8 @@ from sqlalchemy import text
 from .api import api_router
 from .config import get_settings
 from .database import Base, engine
+from .celery_config import celery_app
+from .redis_client import get_all_scraper_statuses, redis_client
 
 
 logger = structlog.get_logger(__name__)
@@ -61,20 +64,46 @@ async def root() -> dict:
 @app.get("/health")
 async def health_check() -> dict:
     """Health Check Endpoint für Monitoring und Docker Health Checks."""
-    health_status = {"status": "ok"}
+    health_status = {
+        "status": "ok",
+        "timestamp": datetime.now().isoformat(),
+        "services": {}
+    }
     
     # Database Connection Check
     if settings.database_url and engine:
         try:
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
-            health_status["database"] = "connected"
+            health_status["services"]["database"] = "ok"
         except Exception as e:
             logger.error("health_check_db_failed", error=str(e))
-            health_status["database"] = "disconnected"
+            health_status["services"]["database"] = "error"
             health_status["status"] = "degraded"
     else:
-        health_status["database"] = "not_configured"
+        health_status["services"]["database"] = "not_configured"
+    
+    # Redis Connection Check
+    try:
+        if redis_client:
+            redis_client.ping()
+            health_status["services"]["redis"] = "ok"
+        else:
+            health_status["services"]["redis"] = "disconnected"
+    except Exception as e:
+        logger.error("health_check_redis_failed", error=str(e))
+        health_status["services"]["redis"] = "error"
+        health_status["status"] = "degraded"
+    
+    # Celery Worker Check (indirekt über Redis)
+    try:
+        if redis_client:
+            health_status["services"]["celery"] = "checking..."
+        else:
+            health_status["services"]["celery"] = "unknown"
+    except Exception as e:
+        logger.error("health_check_celery_failed", error=str(e))
+        health_status["services"]["celery"] = "error"
     
     return health_status
 
