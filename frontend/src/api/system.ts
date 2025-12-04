@@ -2,7 +2,12 @@ import { apiClient } from './client'
 
 export type HealthResponse = {
   status: string
-  database?: string
+  timestamp?: string
+  services?: {
+    database?: string
+    redis?: string
+    celery?: string
+  }
 }
 
 export type ScraperStatusResponse = {

@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import datetime
+import asyncio
 
 import structlog
 from fastapi import FastAPI
@@ -86,7 +87,8 @@ async def health_check() -> dict:
     # Redis Connection Check
     try:
         if redis_client:
-            redis_client.ping()
+            # Führe synchronen Redis-Call in Thread Pool aus, um Event Loop nicht zu blockieren
+            await asyncio.to_thread(redis_client.ping)
             health_status["services"]["redis"] = "ok"
         else:
             health_status["services"]["redis"] = "disconnected"

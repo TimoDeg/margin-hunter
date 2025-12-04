@@ -28,9 +28,24 @@ export function DashboardPage() {
             <p>
               <strong>Status:</strong> {data.status}
             </p>
-            {data.database && (
+            {data.timestamp && (
+              <p style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+                {new Date(data.timestamp).toLocaleString('de-DE')}
+              </p>
+            )}
+            {data.services?.database && (
               <p>
-                <strong>Datenbank:</strong> {data.database}
+                <strong>Datenbank:</strong> {data.services.database}
+              </p>
+            )}
+            {data.services?.redis && (
+              <p>
+                <strong>Redis:</strong> {data.services.redis}
+              </p>
+            )}
+            {data.services?.celery && (
+              <p>
+                <strong>Celery:</strong> {data.services.celery}
               </p>
             )}
           </div>

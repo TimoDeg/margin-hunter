@@ -15,10 +15,17 @@ class Offer(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     url: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
+    source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)  # Alias für url (für Scraper)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     seller_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
+    
+    # Scraper-spezifische Felder
+    source: Mapped[str | None] = mapped_column(String(50), nullable=True, default="ebay")  # ebay, kleinanzeigen, etc.
+    shipping: Mapped[float | None] = mapped_column(Float, nullable=True, default=0.0)
+    condition: Mapped[str | None] = mapped_column(String(50), nullable=True)  # New, Used, Refurbished
+    seller_rating: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="new")
 

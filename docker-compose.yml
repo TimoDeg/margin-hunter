@@ -22,12 +22,24 @@ services:
     restart: unless-stopped
 
   scraper:
-    build: ./scraper
-    env_file:
-      - .env
+    build:
+      context: .
+      dockerfile: scraper/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://margin_user:pass@postgres:5432/margin_hunter
+      - REDIS_URL=redis://redis:6379/0
+      - PLAYWRIGHT_HEADLESS=True
+      - EBAY_MAX_RESULTS=50
+      - SCRAPER_TIMEOUT=30
+      - MARGIN_THRESHOLD=20
+      - LOG_LEVEL=INFO
     depends_on:
-      - backend
+      - postgres
       - redis
+      - backend
+    volumes:
+      - ./scraper:/app/scraper
+      - ./backend:/app/backend
     restart: unless-stopped
 
   telegram-bot:
