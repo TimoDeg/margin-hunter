@@ -10,8 +10,11 @@ class Config:
     EBAY_MAX_RESULTS = int(os.getenv("EBAY_MAX_RESULTS", "50"))
     EBAY_TIMEOUT = int(os.getenv("SCRAPER_TIMEOUT", "30"))
     
-    # Database
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://margin_user:pass@postgres:5432/margin_hunter")
+    # Database (Scraper nutzt SYNC!)
+    DATABASE_URL = os.getenv("DATABASE_URL_SYNC") or os.getenv("DATABASE_URL", "postgresql://margin_user:pass@postgres:5432/margin_hunter")
+    # Entferne asyncpg prefix falls vorhanden (Scraper ist SYNC!)
+    if DATABASE_URL and "+asyncpg" in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")
     
     # Redis
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

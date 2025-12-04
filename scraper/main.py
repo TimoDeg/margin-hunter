@@ -13,9 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from scraper.config import config
 from scraper.ebay_scraper import EbayScraper
-from backend.app.models.product import Product
-from backend.app.models.offer import Offer
-from backend.app.models.price_history import PriceHistory
+from scraper.models import Product, Offer, PriceHistory
 
 # Setup Logging
 logging.basicConfig(
@@ -70,20 +68,29 @@ class ScraperRunner:
         demo_products = [
             {
                 "name": "iPhone 15 Pro",
-                "target_price": 999.99,
-                "filters": {"price_min": 800, "price_max": 1200, "condition": "3000"}
+                "category": "Electronics",
+                "brands": ["Apple"],
+                "price_min": 800.0,
+                "price_max": 1200.0,
+                "filters": {"condition": "3000"}
             },
             {
                 "name": "AirPods Pro 2",
-                "target_price": 199.99,
-                "filters": {"price_min": 150, "price_max": 250, "condition": "3000"}
+                "category": "Electronics",
+                "brands": ["Apple"],
+                "price_min": 150.0,
+                "price_max": 250.0,
+                "filters": {"condition": "3000"}
             },
         ]
         
         for prod_data in demo_products:
             product = Product(
                 name=prod_data["name"],
-                target_price=prod_data["target_price"],
+                category=prod_data["category"],
+                brands=prod_data["brands"],
+                price_min=prod_data["price_min"],
+                price_max=prod_data["price_max"],
                 filters=prod_data["filters"],
                 active=True
             )

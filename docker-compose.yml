@@ -14,6 +14,12 @@ services:
     build: ./backend
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://margin_user:pass@postgres:5432/margin_hunter
+      - DATABASE_URL_SYNC=postgresql://margin_user:pass@postgres:5432/margin_hunter
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=True
+      - SECRET_KEY=Z7ePp4F2dG3kL9xQ1uS8rV6mC0yB5nH3wJ2zR8tK4aN6cD1
     depends_on:
       postgres:
         condition: service_healthy
@@ -26,13 +32,15 @@ services:
       context: .
       dockerfile: scraper/Dockerfile
     environment:
-      - DATABASE_URL=postgresql://margin_user:pass@postgres:5432/margin_hunter
+      - DATABASE_URL=postgresql+asyncpg://margin_user:pass@postgres:5432/margin_hunter
+      - DATABASE_URL_SYNC=postgresql://margin_user:pass@postgres:5432/margin_hunter
       - REDIS_URL=redis://redis:6379/0
       - PLAYWRIGHT_HEADLESS=True
       - EBAY_MAX_RESULTS=50
       - SCRAPER_TIMEOUT=30
       - MARGIN_THRESHOLD=20
       - LOG_LEVEL=INFO
+      - DEBUG=True
     depends_on:
       - postgres
       - redis
