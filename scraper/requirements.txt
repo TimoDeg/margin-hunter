@@ -1,6 +1,5 @@
-playwright==1.40.0
-beautifulsoup4==4.12.2
 requests==2.31.0
+beautifulsoup4==4.12.2
 psycopg2-binary==2.9.9
 asyncpg==0.30.0
 python-dotenv==1.0.0

@@ -1,170 +1,174 @@
-import asyncio
-import logging
-from playwright.async_api import async_playwright, Browser
+import requests
 from bs4 import BeautifulSoup
-from typing import List, Dict, Optional
+import logging
+import time
 from datetime import datetime
+from typing import List, Dict
 from scraper.config import config
 
 logger = logging.getLogger(__name__)
 
 
 class EbayScraper:
-    def __init__(self, headless: bool = True):
-        self.headless = headless
-        self.browser: Optional[Browser] = None
-        self.playwright = None
-        
-    async def start(self):
-        """Starte Playwright Browser"""
-        try:
-            self.playwright = await async_playwright().start()
-            self.browser = await self.playwright.chromium.launch(
-                headless=self.headless,
-                args=['--disable-blink-features=AutomationControlled']
-            )
-            logger.info("✅ Playwright Browser gestartet")
-        except Exception as e:
-            logger.error(f"❌ Browser Start fehlgeschlagen: {e}")
-            raise
-
-    async def close(self):
-        """Schließe Browser"""
-        try:
-            if self.browser:
-                await self.browser.close()
-            if self.playwright:
-                await self.playwright.stop()
-            logger.info("✅ Browser geschlossen")
-        except Exception as e:
-            logger.error(f"❌ Browser Close fehlgeschlagen: {e}")
-
-    async def search_product(self, product_name: str, filters: Dict) -> List[Dict]:
+    def __init__(self):
+        """Initialisiere HTTP Session mit Headers"""
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
+        })
+        logger.info("✅ eBay Scraper initialisiert (Requests Mode)")
+    
+    def search_product(self, product_name: str, filters: Dict) -> List[Dict]:
         """
-        Suche Produkt auf eBay
+        Suche Produkt auf eBay via HTTP Request
         
-        Args:
-            product_name: Produkt zum Suchen (z.B. "iPhone 15")
-            filters: Dict mit price_min, price_max, condition, etc.
-            
-        Returns:
-            List von Offer-Dicts
+        Speed: ~1-2 Sekunden statt 15-30 mit Browser
         """
         try:
-            page = await self.browser.new_page()
-            
-            # eBay Search Query bauen
+            # eBay Search URL bauen
             query_params = {
-                "_nkw": product_name,
-                "_sacat": filters.get("category", "0"),
+                "_nkw": product_name,  # Suchbegriff
                 "LH_ItemCondition": filters.get("condition", "3000"),  # 3000=All
             }
             
-            # Price Filter (wenn vorhanden)
+            # Price Filter (optional)
             if filters.get("price_min"):
                 query_params["_udlo"] = filters["price_min"]
             if filters.get("price_max"):
                 query_params["_udhi"] = filters["price_max"]
             
-            # Query String bauen
-            query_string = "&".join([f"{k}={v}" for k, v in query_params.items()])
-            search_url = f"{config.EBAY_BASE_URL}?{query_string}"
+            # URL bauen
+            url = f"{config.EBAY_BASE_URL}"
             
-            logger.info(f"🔍 Searching: {search_url[:80]}...")
+            logger.info(f"🔍 Scraping: {product_name} from eBay...")
             
-            # Navigiere zu eBay
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=config.EBAY_TIMEOUT * 1000)
+            # HTTP Request (NICHT Browser!)
+            response = self.session.get(
+                url,
+                params=query_params,
+                timeout=config.EBAY_TIMEOUT
+            )
+            response.raise_for_status()
             
-            # Warte auf Listings
-            await page.wait_for_selector(".s-item", timeout=10000)
+            logger.info(f"✅ Got {len(response.text)} bytes from eBay")
             
-            # Parse Listings
-            content = await page.content()
-            soup = BeautifulSoup(content, 'html.parser')
+            # Parse HTML
+            offers = self._extract_offers(response.text, product_name)
+            logger.info(f"✅ Extracted {len(offers)} offers")
             
-            offers = self._extract_offers(soup, product_name)
+            return offers
             
-            logger.info(f"✅ Found {len(offers)} offers for {product_name}")
+        except requests.exceptions.Timeout:
+            logger.error(f"❌ Timeout scraping {product_name}")
+            return []
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ Request failed: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"❌ Error scraping {product_name}: {e}")
+            return []
+    
+    def _extract_offers(self, html: str, product_name: str) -> List[Dict]:
+        """
+        Parse HTML und extrahiere Angebote
+        """
+        offers = []
+        
+        try:
+            soup = BeautifulSoup(html, 'html.parser')
+            items = soup.find_all("div", class_="s-item")
             
-            await page.close()
+            logger.info(f"Found {len(items)} items in HTML")
+            
+            for item in items[:config.EBAY_MAX_RESULTS]:
+                try:
+                    # Title
+                    title_elem = item.find("div", class_="s-item__title")
+                    title = title_elem.get_text(strip=True) if title_elem else "N/A"
+                    
+                    # Skip "Shop on eBay" entries
+                    if "Shop on eBay" in title or title == "N/A":
+                        continue
+                    
+                    # Price
+                    price_elem = item.find("span", class_="s-item__price")
+                    price_text = price_elem.get_text(strip=True) if price_elem else "0"
+                    price = self._parse_price(price_text)
+                    
+                    # Shipping
+                    shipping_elem = item.find("span", class_="s-item__shipping")
+                    shipping_text = shipping_elem.get_text(strip=True) if shipping_elem else "Free"
+                    shipping = self._parse_price(shipping_text)
+                    
+                    # Condition
+                    condition = "Used"
+                    condition_elem = item.find("span", class_="SECONDARY_INFO")
+                    if condition_elem:
+                        condition_text = condition_elem.get_text(strip=True)
+                        if "New" in condition_text:
+                            condition = "New"
+                        elif "Refurbished" in condition_text:
+                            condition = "Refurbished"
+                    
+                    # Seller Rating (optional)
+                    rating = "Unknown"
+                    rating_elem = item.find("span", class_="s-item__seller-info-text")
+                    if rating_elem:
+                        rating = rating_elem.get_text(strip=True)
+                    
+                    # URL
+                    link_elem = item.find("a", class_="s-item__link")
+                    url = link_elem.get("href", "") if link_elem else ""
+                    
+                    # Nur Items mit gültigem Preis
+                    if price > 0 and url:
+                        offers.append({
+                            "title": title,
+                            "price": price,
+                            "shipping": shipping,
+                            "condition": condition,
+                            "rating": rating,
+                            "url": url,
+                            "source": "ebay",
+                            "product_name": product_name,
+                            "scraped_at": datetime.utcnow().isoformat()
+                        })
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Error parsing item: {e}")
+                    continue
+            
+            logger.info(f"✅ Successfully extracted {len(offers)} offers")
             return offers
             
         except Exception as e:
-            logger.error(f"❌ Search fehlgeschlagen für {product_name}: {e}")
+            logger.error(f"❌ Error parsing HTML: {e}")
             return []
-
-    def _extract_offers(self, soup: BeautifulSoup, product_name: str) -> List[Dict]:
-        """
-        Parse eBay HTML und extrahiere Angebote
-        """
-        offers = []
-        items = soup.find_all("div", class_="s-item")
-        
-        for item in items[:config.EBAY_MAX_RESULTS]:
-            try:
-                # Title
-                title_elem = item.find("div", class_="s-item__title")
-                title = title_elem.get_text(strip=True) if title_elem else "N/A"
-                
-                # Price (z.B. "$99.99")
-                price_elem = item.find("span", class_="s-item__price")
-                price_text = price_elem.get_text(strip=True) if price_elem else "0"
-                price = self._parse_price(price_text)
-                
-                # Shipping
-                shipping_elem = item.find("span", class_="s-item__shipping")
-                shipping_text = shipping_elem.get_text(strip=True) if shipping_elem else "0"
-                shipping = self._parse_price(shipping_text)
-                
-                # Condition (New/Used)
-                condition = "Used"
-                condition_elem = item.find("span", class_="SECONDARY_INFO")
-                if condition_elem:
-                    condition_text = condition_elem.get_text(strip=True)
-                    if "New" in condition_text:
-                        condition = "New"
-                
-                # Seller Rating
-                rating_elem = item.find("span", class_="s-item__seller-info-text")
-                rating = "Unknown"
-                if rating_elem:
-                    rating = rating_elem.get_text(strip=True)
-                
-                # URL
-                link_elem = item.find("a", class_="s-item__link")
-                url = link_elem.get("href", "") if link_elem else ""
-                
-                if price > 0 and title != "Shop on eBay":  # Nur Items mit Preis, skip ads
-                    offers.append({
-                        "title": title,
-                        "price": price,
-                        "shipping": shipping,
-                        "condition": condition,
-                        "rating": rating,
-                        "url": url,
-                        "source": "ebay",
-                        "product_name": product_name,
-                        "scraped_at": datetime.utcnow().isoformat()
-                    })
-                    
-            except Exception as e:
-                logger.warning(f"⚠️  Parse error: {e}")
-                continue
-        
-        return offers
-
+    
     @staticmethod
     def _parse_price(price_str: str) -> float:
-        """Parse Price String (z.B. "$99.99" oder "shipping $5.00") zu float"""
+        """Parse Price String zu Float"""
         try:
-            # Entferne Currency Symbole und Extra Text
-            clean = price_str.replace("$", "").replace("€", "").replace("£", "").replace(",", "")
-            # Handle "to $XXX" ranges - nimm den niedrigsten Preis
-            if "to" in clean:
+            # Entferne Currency Symbole und Text
+            clean = price_str.replace("$", "").replace("€", "").replace("£", "")
+            clean = clean.replace(",", "").replace("Free", "0")
+            
+            # Extrahiere erste Zahl (bei "to" Bereichen)
+            if "to" in clean.lower():
                 clean = clean.split("to")[0].strip()
-            # Nur erste Zahl
-            clean = clean.split()[0] if clean.split() else "0"
-            return float(clean)
+            
+            # Parse float
+            clean = ''.join(c for c in clean if c.isdigit() or c == '.')
+            return float(clean) if clean else 0.0
         except:
             return 0.0
-
+    
+    def close(self):
+        """Schließe Session"""
+        self.session.close()
+        logger.info("✅ Scraper session closed")

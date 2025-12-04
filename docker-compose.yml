@@ -35,9 +35,8 @@ services:
       - DATABASE_URL=postgresql+asyncpg://margin_user:pass@postgres:5432/margin_hunter
       - DATABASE_URL_SYNC=postgresql://margin_user:pass@postgres:5432/margin_hunter
       - REDIS_URL=redis://redis:6379/0
-      - PLAYWRIGHT_HEADLESS=True
       - EBAY_MAX_RESULTS=50
-      - SCRAPER_TIMEOUT=30
+      - SCRAPER_TIMEOUT=10
       - MARGIN_THRESHOLD=20
       - LOG_LEVEL=INFO
       - DEBUG=True

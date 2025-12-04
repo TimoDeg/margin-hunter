@@ -8,7 +8,7 @@ class Config:
     # eBay
     EBAY_BASE_URL = "https://www.ebay.com/sch/i.html"
     EBAY_MAX_RESULTS = int(os.getenv("EBAY_MAX_RESULTS", "50"))
-    EBAY_TIMEOUT = int(os.getenv("SCRAPER_TIMEOUT", "30"))
+    EBAY_TIMEOUT = int(os.getenv("SCRAPER_TIMEOUT", "10"))  # 10s statt 30s!
     
     # Database (Scraper nutzt SYNC!)
     DATABASE_URL = os.getenv("DATABASE_URL_SYNC") or os.getenv("DATABASE_URL", "postgresql://margin_user:pass@postgres:5432/margin_hunter")
@@ -21,7 +21,6 @@ class Config:
     
     # Scraper Settings
     MARGIN_THRESHOLD = float(os.getenv("MARGIN_THRESHOLD", "20"))
-    HEADLESS = os.getenv("PLAYWRIGHT_HEADLESS", "True") == "True"
     
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

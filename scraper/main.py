@@ -1,8 +1,8 @@
-import asyncio
 import logging
 import json
 import sys
 import os
+import time
 from datetime import datetime
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -29,12 +29,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class ScraperRunner:
     def __init__(self):
-        self.scraper = EbayScraper(headless=config.HEADLESS)
+        self.scraper = EbayScraper()
         
-    async def run(self):
+    def run(self):
         """Main Scraper Loop"""
         try:
-            await self.scraper.start()
             logger.info("🚀 Scraper gestartet")
             
             # Hole alle aktiven Produkte aus DB
@@ -45,13 +44,13 @@ class ScraperRunner:
                 
                 if len(products) == 0:
                     logger.warning("⚠️  Keine aktiven Produkte gefunden! Erstelle Demo-Produkte...")
-                    await self._create_demo_products(session)
+                    self._create_demo_products(session)
                     products = session.query(Product).filter(Product.active == True).all()
                 
                 for product in products:
-                    await self._scrape_product(session, product)
+                    self._scrape_product(session, product)
                     # Kleine Pause zwischen Produkten (rate limiting)
-                    await asyncio.sleep(2)
+                    time.sleep(2)
                     
             finally:
                 session.close()
@@ -61,9 +60,9 @@ class ScraperRunner:
         except Exception as e:
             logger.error(f"❌ Scraper Error: {e}", exc_info=True)
         finally:
-            await self.scraper.close()
+            self.scraper.close()
 
-    async def _create_demo_products(self, session):
+    def _create_demo_products(self, session):
         """Erstelle Demo-Produkte für Testing"""
         demo_products = [
             {
@@ -99,13 +98,13 @@ class ScraperRunner:
         session.commit()
         logger.info("✅ Demo-Produkte erstellt")
 
-    async def _scrape_product(self, session, product: Product):
+    def _scrape_product(self, session, product: Product):
         """Scrape ein einzelnes Produkt"""
         try:
             logger.info(f"🔍 Scraping: {product.name}")
             
             # eBay Search
-            offers_data = await self.scraper.search_product(
+            offers_data = self.scraper.search_product(
                 product.name,
                 product.filters or {}
             )
@@ -164,14 +163,14 @@ class ScraperRunner:
             logger.error(f"❌ Error scraping {product.name}: {e}", exc_info=True)
 
 
-async def main():
+def main():
     """Entry Point"""
     logger.info("=" * 60)
     logger.info("🚀 MARGIN HUNTER SCRAPER START")
     logger.info("=" * 60)
     
     runner = ScraperRunner()
-    await runner.run()
+    runner.run()
     
     logger.info("=" * 60)
     logger.info("✅ MARGIN HUNTER SCRAPER FINISHED")
@@ -179,5 +178,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
 
