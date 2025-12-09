@@ -70,10 +70,11 @@ async def run_scraper_once(
     """
     Führe einen einfachen Demo-Scrape-Lauf aus und schreibe Offers direkt in die DB.
     """
-    if SCRAPER_STATUS.get("status") == "running":
+    # Prüfe auf "running" ODER "error" Status um Race Conditions zu vermeiden
+    if SCRAPER_STATUS.get("status") in ("running", "error"):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Scraper läuft bereits.",
+            detail=f"Scraper ist nicht bereit (Status: {SCRAPER_STATUS.get('status')}).",
         )
 
     SCRAPER_STATUS["status"] = "running"
@@ -83,14 +84,14 @@ async def run_scraper_once(
     try:
         created = await _run_demo_scrape(session)
     except Exception as exc:  # pragma: no cover - defensive
-        SCRAPER_STATUS["status"] = "error"
+        SCRAPER_STATUS["status"] = "idle"  # Zurücksetzen zu "idle" statt "error" zu behalten
         SCRAPER_STATUS["last_error"] = str(exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Scraper-Lauf fehlgeschlagen: {exc}",
         ) from exc
 
-    SCRAPER_STATUS["status"] = "ok"
+    SCRAPER_STATUS["status"] = "idle"  # Zurücksetzen zu "idle" nach Erfolg
     return {"detail": f"Scraper run completed, created {created} offers."}
 
 

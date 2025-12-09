@@ -12,7 +12,8 @@ export type HealthResponse = {
 
 export type ScraperStatusResponse = {
   status: string
-  detail?: string
+  last_run_at?: string | null
+  last_error?: string | null
 }
 
 export function getHealth() {

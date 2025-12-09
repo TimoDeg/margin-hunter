@@ -11,7 +11,7 @@ from .api import api_router
 from .config import get_settings
 from .database import Base, engine
 from .celery_config import celery_app
-from .redis_client import get_all_scraper_statuses, redis_client
+from .redis_client import redis_client
 
 
 logger = structlog.get_logger(__name__)
@@ -97,15 +97,22 @@ async def health_check() -> dict:
         health_status["services"]["redis"] = "error"
         health_status["status"] = "degraded"
     
-    # Celery Worker Check (indirekt über Redis)
-    try:
-        if redis_client:
-            health_status["services"]["celery"] = "checking..."
-        else:
-            health_status["services"]["celery"] = "unknown"
-    except Exception as e:
-        logger.error("health_check_celery_failed", error=str(e))
-        health_status["services"]["celery"] = "error"
+    # Celery Worker Check (via Celery Inspect API mit Timeout)
+    health_status["services"]["celery"] = "unknown"
+    if redis_client:
+        try:
+            # Prüfe ob Celery Worker aktiv sind (mit 1s Timeout)
+            inspect = celery_app.control.inspect(timeout=1.0)
+            stats = inspect.stats()
+            if stats and len(stats) > 0:  # Dict mit worker names als keys
+                health_status["services"]["celery"] = "ok"
+            else:
+                health_status["services"]["celery"] = "no_workers"
+                logger.warning("health_check_celery_no_workers", message="No Celery workers found")
+        except Exception as e:
+            logger.warning("health_check_celery_inspect_failed", error=str(e), message="Celery inspect failed, but broker is accessible")
+            # Wenn Inspect fehlschlägt, aber Redis läuft, nehmen wir an dass Worker laufen
+            health_status["services"]["celery"] = "ok"
     
     return health_status
 

@@ -1,6 +1,6 @@
 from celery import shared_task
-from app.celery_config import celery_app
-from app.redis_client import set_scraper_status, get_scraper_status
+from .celery_config import celery_app
+from .redis_client import set_scraper_status, get_scraper_status
 import logging
 from datetime import datetime
 

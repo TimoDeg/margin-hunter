@@ -51,9 +51,15 @@ export function ScraperPage() {
           <p>
             <strong>Status:</strong> {data.status}
           </p>
-          {data.detail && (
-            <p>
-              <strong>Detail:</strong> {data.detail}
+          {data.last_run_at && (
+            <p style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+              <strong>Letzter Lauf:</strong>{' '}
+              {new Date(data.last_run_at).toLocaleString('de-DE')}
+            </p>
+          )}
+          {data.last_error && (
+            <p style={{ color: '#f87171', fontSize: '0.875rem' }}>
+              <strong>Fehler:</strong> {data.last_error}
             </p>
           )}
         </div>
