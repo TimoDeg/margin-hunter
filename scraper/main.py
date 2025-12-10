@@ -3,7 +3,7 @@ import json
 import sys
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from typing import List
@@ -144,7 +144,7 @@ class ScraperRunner:
                     price_history = PriceHistory(
                         offer_id=offer.id,
                         price=offer_data["price"],
-                        recorded_at=datetime.utcnow()
+                        recorded_at=datetime.now(timezone.utc)
                     )
                     session.add(price_history)
                     

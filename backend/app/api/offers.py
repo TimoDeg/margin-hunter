@@ -61,7 +61,7 @@ async def update_offer_status(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offer not found")
 
     offer.status = payload.status
-    offer.last_checked_at = datetime.utcnow()
+    offer.last_checked_at = datetime.now(timezone.utc)
 
     await session.commit()
     await session.refresh(offer)

@@ -9,7 +9,7 @@ ausgeführt werden (innerhalb des backend-Containers oder lokal mit passender .e
     python -m app.scripts.seed_demo_data
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database import SyncSessionLocal
 from app.models.offer import Offer
@@ -55,7 +55,7 @@ def seed_offers(session, products: list[Product]) -> None:
     if session.query(Offer).count() > 0:
         return
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     demo_offers = [
         Offer(

@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict
 from scraper.config import config
 
@@ -136,7 +136,7 @@ class EbayScraper:
                             "url": url,
                             "source": "ebay",
                             "product_name": product_name,
-                            "scraped_at": datetime.utcnow().isoformat()
+                            "scraped_at": datetime.now(timezone.utc).isoformat()
                         })
                         
                 except Exception as e:

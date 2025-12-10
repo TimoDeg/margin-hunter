@@ -70,11 +70,11 @@ async def run_scraper_once(
     """
     Führe einen einfachen Demo-Scrape-Lauf aus und schreibe Offers direkt in die DB.
     """
-    # Prüfe auf "running" ODER "error" Status um Race Conditions zu vermeiden
-    if SCRAPER_STATUS.get("status") in ("running", "error"):
+    # Prüfe auf "running" Status um Race Conditions zu vermeiden
+    if SCRAPER_STATUS.get("status") == "running":
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Scraper ist nicht bereit (Status: {SCRAPER_STATUS.get('status')}).",
+            detail=f"Scraper läuft bereits (Status: {SCRAPER_STATUS.get('status')}).",
         )
 
     SCRAPER_STATUS["status"] = "running"
@@ -84,14 +84,14 @@ async def run_scraper_once(
     try:
         created = await _run_demo_scrape(session)
     except Exception as exc:  # pragma: no cover - defensive
-        SCRAPER_STATUS["status"] = "idle"  # Zurücksetzen zu "idle" statt "error" zu behalten
+        SCRAPER_STATUS["status"] = "error"
         SCRAPER_STATUS["last_error"] = str(exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Scraper-Lauf fehlgeschlagen: {exc}",
         ) from exc
 
-    SCRAPER_STATUS["status"] = "idle"  # Zurücksetzen zu "idle" nach Erfolg
+    SCRAPER_STATUS["status"] = "idle"
     return {"detail": f"Scraper run completed, created {created} offers."}
 
 
@@ -120,10 +120,12 @@ async def start_scraper(
 @router.post("/stop", status_code=status.HTTP_202_ACCEPTED)
 async def stop_scraper() -> dict:
     """
-    Platzhalter für späteres periodisches Scraping.
+    Stoppt den Scraper und setzt den Status zurück.
+    Nützlich um aus einem Error-Status herauszukommen.
     """
     SCRAPER_STATUS["status"] = "idle"
-    return {"detail": "Scraper stop requested (no-op for demo)"}
+    SCRAPER_STATUS["last_error"] = None
+    return {"detail": "Scraper stopped and reset to idle"}
 
 
 

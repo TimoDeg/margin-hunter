@@ -2,7 +2,7 @@
 Scraper-spezifische Model-Definitionen (SYNC SQLAlchemy).
 Diese Models sind unabhängig vom Backend, um Import-Probleme zu vermeiden.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -20,8 +20,8 @@ class Product(Base):
     price_min = Column(Float, nullable=False)
     price_max = Column(Float, nullable=False)
     active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class Offer(Base):
@@ -49,8 +49,8 @@ class Offer(Base):
     margin_percent = Column(Float, nullable=True)
     geizhals_price = Column(Float, nullable=True)
     
-    first_seen_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    last_checked_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    first_seen_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_checked_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
 class PriceHistory(Base):
@@ -59,5 +59,5 @@ class PriceHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
     offer_id = Column(Integer, ForeignKey("offers.id", ondelete="CASCADE"), nullable=False, index=True)
     price = Column(Float, nullable=False)
-    recorded_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    recorded_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
