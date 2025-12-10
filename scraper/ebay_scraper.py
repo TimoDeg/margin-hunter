@@ -28,50 +28,106 @@ class EbayScraper:
         Suche Produkt auf eBay via HTTP Request
         
         Speed: ~1-2 Sekunden statt 15-30 mit Browser
+        Robust Error Handling mit Retries
         """
-        try:
-            # eBay Search URL bauen
-            query_params = {
-                "_nkw": product_name,  # Suchbegriff
-                "LH_ItemCondition": filters.get("condition", "3000"),  # 3000=All
-            }
-            
-            # Price Filter (optional)
-            if filters.get("price_min"):
-                query_params["_udlo"] = filters["price_min"]
-            if filters.get("price_max"):
-                query_params["_udhi"] = filters["price_max"]
-            
-            # URL bauen
-            url = f"{config.EBAY_BASE_URL}"
-            
-            logger.info(f"🔍 Scraping: {product_name} from eBay...")
-            
-            # HTTP Request (NICHT Browser!)
-            response = self.session.get(
-                url,
-                params=query_params,
-                timeout=config.EBAY_TIMEOUT
-            )
-            response.raise_for_status()
-            
-            logger.info(f"✅ Got {len(response.text)} bytes from eBay")
-            
-            # Parse HTML
-            offers = self._extract_offers(response.text, product_name)
-            logger.info(f"✅ Extracted {len(offers)} offers")
-            
-            return offers
-            
-        except requests.exceptions.Timeout:
-            logger.error(f"❌ Timeout scraping {product_name}")
-            return []
-        except requests.exceptions.RequestException as e:
-            logger.error(f"❌ Request failed: {e}")
-            return []
-        except Exception as e:
-            logger.error(f"❌ Error scraping {product_name}: {e}")
-            return []
+        max_retries = 3
+        retry_delay = 2  # Sekunden
+        
+        for attempt in range(max_retries):
+            try:
+                # eBay Search URL bauen
+                query_params = {
+                    "_nkw": product_name,  # Suchbegriff
+                    "LH_ItemCondition": filters.get("condition", "3000"),  # 3000=All
+                }
+                
+                # Price Filter (optional)
+                if filters.get("price_min"):
+                    query_params["_udlo"] = filters["price_min"]
+                if filters.get("price_max"):
+                    query_params["_udhi"] = filters["price_max"]
+                
+                # URL bauen
+                url = f"{config.EBAY_BASE_URL}"
+                
+                logger.info(f"🔍 Scraping: {product_name} from eBay (Attempt {attempt + 1}/{max_retries})...")
+                
+                # HTTP Request (NICHT Browser!)
+                response = self.session.get(
+                    url,
+                    params=query_params,
+                    timeout=config.EBAY_TIMEOUT
+                )
+                
+                # Check Response Status
+                if response.status_code == 403:
+                    logger.error(f"🚫 eBay blockiert uns (403) - Rate Limit erreicht!")
+                    if attempt < max_retries - 1:
+                        wait_time = retry_delay * (2 ** attempt)  # Exponential Backoff
+                        logger.info(f"⏳ Warte {wait_time}s vor erneutem Versuch...")
+                        time.sleep(wait_time)
+                        continue
+                    raise requests.exceptions.HTTPError(f"403 Forbidden nach {max_retries} Versuchen")
+                
+                if response.status_code == 429:
+                    logger.error(f"⏱️  Rate Limit erreicht (429)")
+                    if attempt < max_retries - 1:
+                        wait_time = retry_delay * (2 ** attempt)
+                        logger.info(f"⏳ Warte {wait_time}s vor erneutem Versuch...")
+                        time.sleep(wait_time)
+                        continue
+                    raise requests.exceptions.HTTPError(f"429 Rate Limit nach {max_retries} Versuchen")
+                
+                if response.status_code >= 500:
+                    logger.error(f"🔥 eBay Server Error ({response.status_code})")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        continue
+                    raise requests.exceptions.HTTPError(f"Server Error {response.status_code}")
+                
+                response.raise_for_status()
+                
+                logger.info(f"✅ Got {len(response.text)} bytes from eBay")
+                
+                # Parse HTML
+                offers = self._extract_offers(response.text, product_name)
+                logger.info(f"✅ Extracted {len(offers)} offers")
+                
+                return offers
+                
+            except requests.exceptions.Timeout:
+                logger.error(f"⏱️  Timeout scraping {product_name} (Attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    continue
+                logger.error(f"❌ Timeout nach {max_retries} Versuchen")
+                raise  # Re-raise für Celery Retry
+                
+            except requests.exceptions.ConnectionError as e:
+                logger.error(f"🔌 Connection Error: {e} (Attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay * 2)  # Längere Pause bei Connection Errors
+                    continue
+                logger.error(f"❌ Connection Error nach {max_retries} Versuchen")
+                raise
+                
+            except requests.exceptions.RequestException as e:
+                logger.error(f"❌ Request failed: {e} (Attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    continue
+                raise
+                
+            except Exception as e:
+                logger.exception(f"❌ Unerwarteter Fehler beim Scrapen von {product_name}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    continue
+                raise
+        
+        # Sollte nie erreicht werden, aber sicher ist sicher
+        logger.error(f"❌ Scraping fehlgeschlagen nach allen Versuchen: {product_name}")
+        return []
     
     def _extract_offers(self, html: str, product_name: str) -> List[Dict]:
         """

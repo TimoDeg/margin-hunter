@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
 from ..models import Offer, Product
+from ..tasks import scrape_all_active_products, scrape_product_task
+from ..redis_client import redis_client
 
 router = APIRouter()
 
@@ -108,11 +110,42 @@ async def scraper_status() -> dict:
 
 
 @router.post("/start", status_code=status.HTTP_202_ACCEPTED)
-async def start_scraper(
+async def start_scraper() -> dict:
+    """
+    Startet den Scraper asynchron über Celery Tasks.
+    
+    Das Backend bleibt responsive, der Scraper läuft im Hintergrund.
+    """
+    # Prüfe ob bereits läuft
+    if redis_client:
+        current_run = redis_client.get("scraper:current_run")
+        if current_run:
+            return {
+                "detail": "Scraper läuft bereits",
+                "status": "already_running",
+            }
+    
+    # Starte async Celery Task
+    task = scrape_all_active_products.delay()
+    
+    SCRAPER_STATUS["status"] = "running"
+    SCRAPER_STATUS["last_run_at"] = datetime.now(timezone.utc).isoformat()
+    SCRAPER_STATUS["last_error"] = None
+    
+    return {
+        "detail": "Scraper gestartet (asynchron)",
+        "task_id": str(task.id),
+        "status": "running",
+    }
+
+
+@router.post("/start-sync", status_code=status.HTTP_202_ACCEPTED)
+async def start_scraper_sync(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """
-    Für den MVP entspricht 'start' einem einmaligen Demo-Lauf.
+    Legacy: Synchroner Demo-Scraper (blockiert Backend).
+    Nur für Testing! Nutze /start für Production.
     """
     return await run_scraper_once(session)
 
