@@ -12,5 +12,6 @@ redis==4.5.4
 celery[redis]==5.3.4
 structlog==24.4.0
 httpx==0.27.2
+requests==2.31.0
 
 

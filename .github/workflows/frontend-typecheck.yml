@@ -22,17 +22,6 @@ jobs:
     name: TypeScript Type Safety
     runs-on: ubuntu-latest
     
-    # Service-Container für Backend
-    services:
-      # Optional: Wenn du PostgreSQL/Redis brauchst
-      # postgres:
-      #   image: postgres:15
-      #   env:
-      #     POSTGRES_PASSWORD: test
-      #   options: >-
-      #     --health-cmd pg_isready
-      #     --health-interval 10s
-      
     steps:
       # 1. Checkout Code
       - name: 📥 Checkout Repository

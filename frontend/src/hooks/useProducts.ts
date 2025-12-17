@@ -34,7 +34,7 @@ export function useProducts() {
 export function useCreateProduct() {
   const queryClient = useQueryClient()
   
-  return useMutation<Product, Error, ProductCreate>({
+  return useMutation<Product, Error, ProductCreate, { previousProducts: unknown }>({
     mutationFn: (payload) => createProduct(payload),
     
     // Optimistic Update
@@ -70,7 +70,12 @@ export function useCreateProduct() {
 export function useUpdateProduct() {
   const queryClient = useQueryClient()
   
-  return useMutation<Product, Error, { id: number; payload: ProductUpdate }>({
+  return useMutation<
+    Product,
+    Error,
+    { id: number; payload: ProductUpdate },
+    { previousProducts: unknown }
+  >({
     mutationFn: ({ id, payload }) => updateProduct(id, payload),
     
     onMutate: async ({ id, payload }) => {
@@ -106,7 +111,7 @@ export function useUpdateProduct() {
 export function useDeleteProduct() {
   const queryClient = useQueryClient()
   
-  return useMutation<void, Error, { id: number }>({
+  return useMutation<void, Error, { id: number }, { previousProducts: unknown }>({
     mutationFn: ({ id }) => deleteProduct(id),
     
     onMutate: async ({ id }) => {

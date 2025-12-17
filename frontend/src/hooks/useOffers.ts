@@ -70,7 +70,12 @@ export function useOfferHistory(id: number | null) {
 export function useUpdateOfferStatus() {
   const queryClient = useQueryClient()
 
-  return useMutation<unknown, Error, { id: number; payload: OfferStatusUpdate }>({
+  return useMutation<
+    unknown,
+    Error,
+    { id: number; payload: OfferStatusUpdate },
+    { previousOffers: unknown }
+  >({
     mutationFn: ({ id, payload }) => updateOfferStatus(id, payload),
     
     // OPTIMISTIC UPDATE: Sofortige UI-Aktualisierung
