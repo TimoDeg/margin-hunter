@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# OpenAPI Generated Types
+# Option A: Ignore (regeneriert bei jedem Build - empfohlen für große Teams)
+# src/api/generated/schema.ts
+# Option B: Commit (Frontend sofort lauffähig - empfohlen für kleine Teams)
+# → Aktuell: schema.ts wird COMMITTED (Option B)

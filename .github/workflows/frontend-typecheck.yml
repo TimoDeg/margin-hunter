@@ -1,0 +1,194 @@
+name: Frontend Type Safety Check
+
+# Workflow wird ausgelöst bei:
+# - Push auf main/master
+# - Pull Requests
+# - Manuell über GitHub UI
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'  # Auch bei Backend-Änderungen prüfen!
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+  workflow_dispatch:  # Manueller Trigger
+
+jobs:
+  typecheck:
+    name: TypeScript Type Safety
+    runs-on: ubuntu-latest
+    
+    # Service-Container für Backend
+    services:
+      # Optional: Wenn du PostgreSQL/Redis brauchst
+      # postgres:
+      #   image: postgres:15
+      #   env:
+      #     POSTGRES_PASSWORD: test
+      #   options: >-
+      #     --health-cmd pg_isready
+      #     --health-interval 10s
+      
+    steps:
+      # 1. Checkout Code
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Setup Python für Backend
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # 3. Install Backend Dependencies
+      - name: 📦 Install Backend Dependencies
+        working-directory: ./backend
+        run: |
+          pip install -r requirements.txt
+
+      # 4. Start Backend (im Hintergrund)
+      - name: 🚀 Start FastAPI Backend
+        working-directory: ./backend
+        env:
+          DATABASE_URL: sqlite:///./test.db
+          REDIS_URL: redis://localhost:6379
+        run: |
+          # Backend im Hintergrund starten
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          
+          # Warten bis Backend bereit ist (max 30 Sekunden)
+          timeout=30
+          counter=0
+          echo "⏳ Waiting for backend to be ready..."
+          until curl -f http://localhost:8000/health || [ $counter -eq $timeout ]; do
+            sleep 1
+            counter=$((counter + 1))
+            echo "  Attempt $counter/$timeout..."
+          done
+          
+          if [ $counter -eq $timeout ]; then
+            echo "❌ Backend failed to start in time"
+            exit 1
+          fi
+          
+          echo "✅ Backend is ready!"
+
+      # 5. Verify OpenAPI Schema is available
+      - name: 🔍 Verify OpenAPI Schema
+        run: |
+          echo "📋 Fetching OpenAPI Schema..."
+          curl -f http://localhost:8000/openapi.json > /dev/null
+          echo "✅ OpenAPI Schema is accessible"
+
+      # 6. Setup Node.js für Frontend
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ./frontend/package-lock.json
+
+      # 7. Install Frontend Dependencies
+      - name: 📦 Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      # 8. Generate TypeScript Types from Backend
+      - name: 🔄 Generate TypeScript Types from OpenAPI Schema
+        working-directory: ./frontend
+        run: |
+          echo "🔄 Generating TypeScript types from backend..."
+          npm run openapi:generate
+          
+          # Prüfe ob schema.ts generiert wurde
+          if [ ! -f src/api/generated/schema.ts ]; then
+            echo "❌ Failed to generate schema.ts"
+            exit 1
+          fi
+          
+          echo "✅ TypeScript types generated successfully"
+          
+          # Zeige Statistiken
+          lines=$(wc -l < src/api/generated/schema.ts)
+          echo "📊 Generated schema.ts has $lines lines"
+
+      # 9. Run TypeScript Type Check
+      - name: 🔍 TypeScript Type Check
+        working-directory: ./frontend
+        run: |
+          echo "🔍 Running TypeScript compiler..."
+          npm run typecheck
+          echo "✅ TypeScript compilation successful - No type errors!"
+
+      # 10. Optional: Run ESLint
+      - name: 🧹 ESLint Check
+        working-directory: ./frontend
+        run: |
+          npm run lint
+        continue-on-error: true  # Lint-Fehler brechen Build nicht
+
+      # 11. Optional: Build Frontend
+      - name: 🏗️ Build Frontend
+        working-directory: ./frontend
+        run: |
+          npm run build
+          echo "✅ Frontend build successful"
+
+      # 12. Upload schema.ts als Artifact (für Debugging)
+      - name: 📤 Upload Generated Schema
+        if: always()  # Auch bei Fehlern hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-typescript-schema
+          path: frontend/src/api/generated/schema.ts
+          retention-days: 7
+
+      # 13. Comment on PR with Results (optional)
+      - name: 💬 Comment PR
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ❌ Type Safety Check Failed
+              
+              Die TypeScript-Typen sind nicht mehr kompatibel mit dem Backend-Schema!
+              
+              **Mögliche Ursachen:**
+              - Backend-API wurde geändert (Felder hinzugefügt/entfernt/umbenannt)
+              - Response-Types haben sich geändert
+              - Endpoint-Signaturen haben sich geändert
+              
+              **Nächste Schritte:**
+              1. Generiere lokal neue Typen: \`npm run openapi:generate\`
+              2. Behebe die TypeScript-Fehler im Frontend
+              3. Pushe die Änderungen
+              
+              📋 Siehe Details im [Workflow-Log](${context.payload.repository.html_url}/actions/runs/${context.runId})
+              `
+            })
+
+# ============================================================================
+# RESULT
+# ============================================================================
+
+# ✅ Erfolg: Backend-Schema und Frontend-Types sind kompatibel
+# ❌ Fehler: Backend-Änderung bricht Frontend-Types
+#
+# Dieser Workflow garantiert:
+# 1. Backend läuft und ist erreichbar
+# 2. OpenAPI-Schema ist verfügbar
+# 3. TypeScript-Types werden generiert
+# 4. Frontend kompiliert ohne Type-Errors
+# 5. Build schlägt fehl bei Inkompatibilität
+#
+# → Keine Runtime-Errors mehr durch API-Änderungen!
+
